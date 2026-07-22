@@ -78,11 +78,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .setgrid .i{font-size:11px;color:var(--dim2);text-align:center}
 .rm{width:30px;height:34px;border-radius:9px;background:var(--panel2);color:var(--dim);font-size:15px}
 .rm[disabled]{opacity:.25}
-input[type=number],input[type=text],select{background:var(--panel);border:1px solid var(--line);
+input[type=number],input[type=text],select,textarea{background:var(--panel);border:1px solid var(--line);
   color:var(--ink);border-radius:9px;padding:10px 8px;font-size:16px;width:100%;
   font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none;text-align:center}
-select{padding:10px 4px;font-size:14px}
-input:focus,select:focus{outline:none;border-color:var(--dim)}
+select{padding:10px 4px;font-size:14px;text-align:left}
+textarea{text-align:left;font-size:14px;line-height:1.5;font-family:inherit;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--dim)}
 .primary{width:100%;padding:14px;border-radius:12px;background:var(--ink);color:#0e1013;
   font-weight:800;font-size:15px;margin-top:10px}
 .ghost{width:100%;padding:12px;border-radius:12px;background:var(--panel);color:var(--dim);font-size:13px;margin-top:8px}
@@ -341,7 +342,8 @@ const store={
     try{ window.localStorage.setItem(KEY,s); }catch(e){}
   }
 };
-let D={logs:[],custom:[],weights:[],profile:{h:'',arm:'mid',leg:'mid',torso:'mid'}};
+let D={logs:[],custom:[],weights:[],profile:{h:'',arm:'mid',leg:'mid',torso:'mid',
+  years:'',goal:'',freq:'',sleep:'',equip:'',note:''}};
 const save=()=>store.set(D);
 
 /* ---------- 共通 ---------- */
@@ -450,6 +452,15 @@ function briefing(){
   const r=rangeStats(from,to);
   const L=[];
   L.push(`【筋トレ記録の相談】目的：筋肥大`);
+  const p=D.profile||{};
+  const pf=[];
+  if(p.years) pf.push(`筋トレ歴 ${p.years}`);
+  if(p.goal) pf.push(`目的 ${p.goal}`);
+  if(p.freq) pf.push(`頻度 ${p.freq}`);
+  if(p.sleep) pf.push(`睡眠 ${p.sleep}`);
+  if(p.equip) pf.push(`環境 ${p.equip}`);
+  if(pf.length) L.push(`■ 基本情報：${pf.join('／')}`);
+  if(p.note) L.push(`メモ：${p.note}`);
   L.push(`集計期間：${from} 〜 ${to}（直近4週間）`);
   L.push(`トレーニング日数：${r.days}日／総セット数：${r.sets}／総挙上重量：${r.vol.toLocaleString()}kg`);
   L.push(``);
@@ -722,6 +733,7 @@ function renderRcv(){
 
 /* ---------- 体 ---------- */
 const SEGS=['短め','普通','長め'], SEGV=['short','mid','long'];
+function opt(arr,cur){return arr.map(v=>`<option value="${v}"${v===cur?' selected':''}>${v||'（未選択）'}</option>`).join('');}
 function renderBody(){
   const p=D.profile, ws=D.weights.slice().sort((a,b)=>a.date<b.date?1:-1);
   const seg=(k,label)=>`<div class="field"><label>${label}</label><div class="seg" data-k="${k}">
@@ -731,7 +743,21 @@ function renderBody(){
   const prev=avg(ws.filter(w=>{const d=(today-parseK(w.date))/864e5;return d>=7&&d<14;}).map(w=>+w.kg));
   const diff=(recent!==null&&prev!==null)?recent-prev:null;
   document.getElementById('v-body').innerHTML=`
-    <div class="mrow"><span class="m">体の記録</span></div>
+    <div class="mrow"><span class="m">基本情報</span></div>
+    <div class="sub" style="margin:-4px 0 10px">ここを埋めておくと「AIに相談」の内容に自動で入り、毎回説明しなくて済みます。</div>
+    <div class="field"><label>筋トレ歴</label>
+      <select id="p_years">${opt(['','半年未満','半年〜1年','1〜2年','3〜4年','5年以上'],p.years)}</select></div>
+    <div class="field"><label>今の目的</label>
+      <select id="p_goal">${opt(['','増量（体を大きく）','今の体重で質を上げる','減量（絞る）'],p.goal)}</select></div>
+    <div class="field"><label>通える頻度（週）</label>
+      <select id="p_freq">${opt(['','週1〜2回','週3回','週4回','週5回以上'],p.freq)}</select></div>
+    <div class="field"><label>睡眠（1日の目安）</label>
+      <select id="p_sleep">${opt(['','6時間未満','6〜7時間','7〜8時間','8時間以上'],p.sleep)}</select></div>
+    <div class="field"><label>環境</label>
+      <select id="p_equip">${opt(['','フリーウェイト中心','マシン中心','半々','自宅・器具少なめ'],p.equip)}</select></div>
+    <div class="field"><label>その他メモ（痛み・詰まる所・課題など）</label>
+      <textarea id="p_note" rows="2" placeholder="例：ショルダープレスは中間で詰まる／腰に古傷">${p.note||''}</textarea></div>
+    <div class="mrow" style="margin-top:18px"><span class="m">体の記録</span></div>
     <div class="field"><label>今日の体重 (kg)</label>
       <div class="wrow"><input type="number" inputmode="decimal" step="0.1" id="wIn" placeholder="例 72.4">
         <button id="wSave">記録</button></div></div>
@@ -758,6 +784,9 @@ function renderBody(){
   const del=document.getElementById('wDel');
   if(del) del.onclick=()=>{D.weights=D.weights.filter(w=>w.date!==ws[0].date);save();renderBody();};
   document.getElementById('h').oninput=e=>{D.profile.h=e.target.value;save();};
+  [['p_years','years'],['p_goal','goal'],['p_freq','freq'],['p_sleep','sleep'],['p_equip','equip']].forEach(([id,k])=>{
+    const el=document.getElementById(id); if(el) el.onchange=e=>{D.profile[k]=e.target.value;save();};});
+  const nt=document.getElementById('p_note'); if(nt) nt.oninput=e=>{D.profile.note=e.target.value;save();};
   document.querySelectorAll('.seg').forEach(sg=>sg.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     D.profile[sg.dataset.k]=b.dataset.v; save(); renderBody();}));
 }
@@ -826,7 +855,7 @@ document.getElementById('btn-export').onclick=()=>{
 /* ---------- 起動 ---------- */
 (async()=>{
   const d=await store.get();
-  if(d){D=Object.assign(D,d);D.weights=d.weights||[];D.profile=Object.assign({h:'',arm:'mid',leg:'mid',torso:'mid'},d.profile||{});}
+  if(d){D=Object.assign(D,d);D.weights=d.weights||[];D.profile=Object.assign({h:'',arm:'mid',leg:'mid',torso:'mid',years:'',goal:'',freq:'',sleep:'',equip:'',note:''},d.profile||{});}
   renderCal();
 })();
 </script>
