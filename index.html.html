@@ -546,18 +546,25 @@ function renderDay(){
         <div class="top"><span class="tag" style="background:${PARTS[l.part].c}">${PARTS[l.part].ja}</span>
           <span class="nm">${esc(l.name)}</span>
           ${isPR?'<span class="pr">最高</span>':''}
+          <button class="del" data-edit="${l.id}" style="margin-left:auto;color:var(--ink)">編集</button>
           <button class="del" data-id="${l.id}">削除</button></div>
         <div class="sets num">${l.sets.map((s,i)=>`${i+1}) ${s.w}kg × ${s.r}回${s.rir!==''&&s.rir!=null?`<span style="color:var(--dim2)"> R${s.rir}</span>`:''}`).join('　')}
           <span style="color:var(--dim2)">　計 ${fmtT(volOf(l))}</span></div></div>`;}).join('')
       :'<div class="empty-msg">記録なし</div>'}
     <button class="add" id="addbtn">この日に記録を追加</button>`;
-  box.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+  box.querySelectorAll('.del[data-id]').forEach(b=>b.onclick=()=>{
     D.logs=D.logs.filter(l=>l.id!==b.dataset.id); save(); renderCal();});
-  document.getElementById('addbtn').onclick=()=>{recDate=sel;recPart=null;recEx=null;go('rec');};
+  box.querySelectorAll('.del[data-edit]').forEach(b=>b.onclick=()=>{
+    const l=D.logs.find(x=>x.id===b.dataset.edit); if(!l) return;
+    recDate=l.date; recPart=l.part; recEditId=l.id;
+    recEx=allEx().find(e=>e.name===l.name)||{part:l.part,name:l.name,w:20,r:10,sets:3};
+    recSets=l.sets.map(s=>({w:s.w,r:s.r,rir:s.rir===''||s.rir==null?'':s.rir}));
+    go('rec'); renderRec();});
+  document.getElementById('addbtn').onclick=()=>{recDate=sel;recPart=null;recEx=null;recEditId=null;go('rec');};
 }
 
 /* ---------- 記録 ---------- */
-let recDate=todayKey, recPart=null, recEx=null, recSets=[];
+let recDate=todayKey, recPart=null, recEx=null, recSets=[], recEditId=null;
 function renderRec(){
   const v=document.getElementById('v-rec');
   if(!recPart){
@@ -595,7 +602,7 @@ function renderRec(){
   const deload=st>=3;
   v.innerHTML=`<button class="back" id="bk">‹ 種目を選び直す</button>
     <div class="mrow"><span class="m" style="font-size:20px">${esc(recEx.name)}</span></div>
-    <div class="hint num">${recDate}　${PARTS[recPart].ja}</div>
+    <div class="hint num">${recDate}　${PARTS[recPart].ja}${recEditId?'　<span style="color:var(--warn)">編集中</span>':''}</div>
     ${deload?`<div class="flag" style="background:rgba(232,180,74,.15);color:var(--warn)">${st}回連続で更新なし → デロード推奨</div>`:''}
     <div class="target">
       <div class="lb">今日の目標</div>
@@ -618,8 +625,8 @@ function renderRec(){
     </div>`).join('')}
     <div class="hint">RIR＝そのセットで「あと何回できたか」。0＝限界、2＝あと2回できた</div>
     <button class="ghost" id="more">＋ セットを追加</button>
-    <button class="primary" id="sv">保存する</button>`;
-  document.getElementById('bk').onclick=()=>{recEx=null;renderRec();};
+    <button class="primary" id="sv">${recEditId?'更新する':'保存する'}</button>`;
+  document.getElementById('bk').onclick=()=>{recEx=null;recEditId=null;renderRec();};
   v.querySelectorAll('[data-f]').forEach(el=>{
     const h=()=>{recSets[+el.dataset.i][el.dataset.f]=el.value;};
     el.oninput=h; el.onchange=h;});
@@ -631,6 +638,15 @@ function renderRec(){
   document.getElementById('sv').onclick=()=>{
     const clean=recSets.map(s=>({w:+s.w||0,r:+s.r||0,rir:s.rir===''?'':+s.rir})).filter(s=>s.r>0&&s.w>=0);
     if(!clean.length){toast('回数が0のセットしかありません。');return;}
+    if(recEditId){
+      const l=D.logs.find(x=>x.id===recEditId);
+      if(l){l.sets=clean; l.date=recDate; l.part=recPart;}
+      save();
+      toast('記録を更新しました。');
+      recEx=null; recEditId=null; sel=recDate;
+      const dd=parseK(recDate); cur=new Date(dd.getFullYear(),dd.getMonth(),1);
+      renderRec(); renderCal(); go('cal'); return;
+    }
     const prevBest=ss.length?Math.max(...ss.map(s=>s.e1)):0;
     D.logs.push({id:Math.random().toString(36).slice(2),date:recDate,part:recPart,name:recEx.name,sets:clean});
     save();
@@ -820,7 +836,7 @@ function go(v){
   window.scrollTo(0,0);
 }
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
-  if(b.dataset.v==='rec'){recDate=sel||todayKey;recPart=null;recEx=null;}
+  if(b.dataset.v==='rec'){recDate=sel||todayKey;recPart=null;recEx=null;recEditId=null;}
   if(b.dataset.v==='week') weekOff=0;
   go(b.dataset.v);});
 document.getElementById('btn-ai').onclick=async()=>{
