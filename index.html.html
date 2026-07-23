@@ -591,7 +591,7 @@ function renderRec(){
     v.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{
       recEx=list[+b.dataset.i];
       const t=targetOf(recEx);
-      recSets=Array.from({length:t.sets||3},()=>({w:t.w,r:t.r,rir:''}));
+      recSets=[{w:t.w,r:t.r,rir:''}];
       renderRec();});
     document.getElementById('addex').onclick=()=>{
       const n=document.getElementById('newex').value.trim(); if(!n) return;
