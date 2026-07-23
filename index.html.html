@@ -248,6 +248,16 @@ const SEED=[
  ['2026-07-09','sh','ダンベルショルダープレス',[[24,8],[24,6],[20,8],[20,7]]],
  ['2026-07-16','arm','オーバーヘッドエクステンション',[[30,8],[30,8],[30,8]]],
  ['2026-07-16','chest','ベンチプレス',[[75,5],[75,5],[75,5],[75,5],[75,5]]],
+ ['2026-07-22','chest','ベンチプレス',[[77.5,5],[77.5,5],[77.5,5],[77.5,5],[77.5,5]]],
+ ['2026-07-22','chest','インクラインダンベルプレス',[[22,8],[22,5],[20,5]]],
+ ['2026-07-22','chest','足座るところ4.5見えるシート5ペックフライ',[[35,9],[35,7],[35,7]]],
+ ['2026-07-22','sh','マシンサイドレイズ',[[20,15],[20,12],[15,15]]],
+ ['2026-07-22','arm','ケーブルトライセプスエクステンション',[[40,13],[40,8],[35,8],[35,6]]],
+ ['2026-07-22','arm','ケーブル三頭エクステンション',[[35,5],[25,8],[25,8]]],
+ ['2026-07-23','legs','バーベルスクワット',[[85,5],[85,5],[80,5]]],
+ ['2026-07-23','legs','マシンレッグプレス',[[60,7],[55,9],[55,8]]],
+ ['2026-07-23','legs','レッグカール',[[45,10],[45,8],[40,9]]],
+ ['2026-07-23','back','荷重チンニング',[[77,7],[77,5],[77,3]]],
 ];
 /* ---------- 2026年6月の記録 ---------- */
 const SEED6=[
@@ -521,7 +531,7 @@ function renderCal(){
     <div class="dow"><div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div></div>
     <div class="grid">${cells}</div>
     ${SEED.concat(SEED6).some(s=>!D.logs.some(l=>l.date===s[0]&&l.name===s[2]))
-      ?'<button class="add" id="seedbtn" style="margin-top:12px">6〜7月の記録を読み込む</button>':''}
+      ?'<button class="add" id="seedbtn" style="margin-top:12px">6〜7月の記録を復元する</button>':''}
     <div class="day" id="daybox"></div>`;
   const sb=document.getElementById('seedbtn');
   if(sb) sb.onclick=()=>{const n=importSeed();renderCal();toast(`${n}件の記録を読み込みました。`);};
@@ -759,7 +769,8 @@ function renderBody(){
   const prev=avg(ws.filter(w=>{const d=(today-parseK(w.date))/864e5;return d>=7&&d<14;}).map(w=>+w.kg));
   const diff=(recent!==null&&prev!==null)?recent-prev:null;
   document.getElementById('v-body').innerHTML=`
-    <div class="mrow"><span class="m">基本情報</span></div>
+    <div class="mrow"><span class="m">基本情報</span>
+      <span id="psave" style="margin-left:auto;font-size:12px;color:var(--good);opacity:0;transition:opacity .3s"></span></div>
     <div class="sub" style="margin:-4px 0 10px">ここを埋めておくと「AIに相談」の内容に自動で入り、毎回説明しなくて済みます。</div>
     <div class="field"><label>筋トレ歴</label>
       <select id="p_years">${opt(['','半年未満','半年〜1年','1〜2年','3〜4年','5年以上'],p.years)}</select></div>
@@ -800,9 +811,16 @@ function renderBody(){
   const del=document.getElementById('wDel');
   if(del) del.onclick=()=>{D.weights=D.weights.filter(w=>w.date!==ws[0].date);save();renderBody();};
   document.getElementById('h').oninput=e=>{D.profile.h=e.target.value;save();};
+  const pSaved=()=>{const el=document.getElementById('psave');
+    if(el){el.textContent='保存しました';el.style.opacity='1';
+      clearTimeout(window._pt);window._pt=setTimeout(()=>{el.style.opacity='0';},1600);}};
   [['p_years','years'],['p_goal','goal'],['p_freq','freq'],['p_sleep','sleep'],['p_equip','equip']].forEach(([id,k])=>{
-    const el=document.getElementById(id); if(el) el.onchange=e=>{D.profile[k]=e.target.value;save();};});
-  const nt=document.getElementById('p_note'); if(nt) nt.oninput=e=>{D.profile.note=e.target.value;save();};
+    const el=document.getElementById(id); if(!el) return;
+    const h=e=>{D.profile[k]=e.target.value;save();pSaved();};
+    el.onchange=h; el.oninput=h; el.onblur=h;});
+  const nt=document.getElementById('p_note');
+  if(nt){const h=e=>{D.profile.note=e.target.value;save();pSaved();};
+    nt.oninput=h; nt.onchange=h; nt.onblur=h;}
   document.querySelectorAll('.seg').forEach(sg=>sg.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     D.profile[sg.dataset.k]=b.dataset.v; save(); renderBody();}));
 }
